@@ -5,7 +5,8 @@ from sklearn.datasets import make_classification
 
 def convert_tree_to_json(tree: DecisionTreeClassifier) -> str:
     def _tree_traversal(tree, index=0):
-        if tree.tree_.children_left[index] == -1 and tree.tree_.children_right[index] == -1:
+        if (tree.tree_.children_left[index] == -1 and
+                tree.tree_.children_right[index] == -1):
             return {"class": int(tree.tree_.value[index].argmax())}
         return {
             "feature_index": int(tree.tree_.feature[index]),
@@ -15,30 +16,39 @@ def convert_tree_to_json(tree: DecisionTreeClassifier) -> str:
         }
     return json.dumps(_tree_traversal(tree))
 
+
 def generate_sql_query(tree_as_json: str, features: list) -> str:
     data = json.loads(tree_as_json)
 
     def _sub_generate(json_data: dict):
 
-        if 'left' not in json_data.keys() and 'right' not in json_data.keys():
+        if ('left' not in json_data.keys() and
+                'right' not in json_data.keys()):
             class_leaf = json_data['class']
             return f"{class_leaf}"
 
-        elif 'left' in json_data.keys() and 'class' in json_data['right'].keys():
+        elif ('left' in json_data.keys() and
+              'class' in json_data['right'].keys()):
             feature_name = features[int(json_data['feature_index'])]
             threshold = float(json_data['threshold'])
-            return f"CASE\n\t WHEN {feature_name} > {threshold} THEN \n {json_data['right']['class']} ELSE \n {_sub_generate(json_data['left'])} END"
+            return (f"CASE\n\t WHEN {feature_name} > {threshold} THEN"
+                    f" \n {json_data['right']['class']} ELSE "
+                    f"\n {_sub_generate(json_data['left'])} END")
 
-        elif 'right' in json_data.keys() and 'class' in json_data['left'].keys():
+        elif ('right' in json_data.keys() and
+              'class' in json_data['left'].keys()):
             feature_name = features[int(json_data['feature_index'])]
             threshold = float(json_data['threshold'])
-            return f"CASE \n\t WHEN {feature_name} > {threshold} THEN \n {_sub_generate(json_data['right'])} ELSE \n {json_data['left']['class']} END"
+            return (f"CASE \n\t WHEN {feature_name} > {threshold} THEN "
+                    f"\n {_sub_generate(json_data['right'])} ELSE "
+                    f"\n {json_data['left']['class']} END")
 
         elif 'left' in json_data.keys() and 'right' in json_data.keys():
             feature_name = features[int(json_data['feature_index'])]
             threshold = float(json_data['threshold'])
             sub_sql = f"CASE \n\t WHEN {feature_name} > {threshold} THEN \n"
-            return f"{sub_sql} {_sub_generate(json_data['right'])} ELSE \n {_sub_generate(json_data['left'])} END"
+            return (f"{sub_sql} {_sub_generate(json_data['right'])} "
+                    f"ELSE \n {_sub_generate(json_data['left'])} END")
 
     return f"SELECT {_sub_generate(data)} AS class_label"
 

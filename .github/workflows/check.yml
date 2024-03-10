@@ -1,0 +1,25 @@
+# .github/workflows/check.yml
+name: pycodestyle check
+
+on: [ push ]
+
+jobs:
+  check_files:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Python setup
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+    # install requirements
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    # install pycodestyle
+    - name: install pycodestyle
+      run: pip install pycodestyle
+    # check .py files
+    - name: pycodestyle check
+      run: pycodestyle --max-doc-length=120 ./
